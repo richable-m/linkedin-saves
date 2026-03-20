@@ -32,7 +32,7 @@
       position: sticky; top: 0; z-index: 200;
       background: rgba(10,10,10,0.95); backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--border);
-      padding: 12px 24px;
+      padding: 12px 80px;
       display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
     }
     .wordmark {
@@ -71,7 +71,7 @@
 
     /* ── Filter bar ──────────────────────────────────────────── */
     #filterBar {
-      padding: 10px 24px; display: flex; align-items: center;
+      padding: 10px 80px; display: flex; align-items: center;
       gap: 8px; flex-wrap: wrap; border-bottom: 1px solid var(--border);
     }
     #filterBar:empty { display: none; }
@@ -111,7 +111,7 @@
     .tag-pill.active { background: rgba(255,241,206,0.06); border-color: rgba(255,241,206,0.3); color: var(--yellow); }
 
     /* ── Grid ────────────────────────────────────────────────── */
-    #grid { padding: 24px; columns: 3 300px; column-gap: 16px; }
+    #grid { padding: 24px 80px; columns: 3 300px; column-gap: 16px; }
 
     /* ── Card ────────────────────────────────────────────────── */
     .card {
@@ -216,8 +216,8 @@
 
     /* ── Watch button ────────────────────────────────────────── */
     .btn-watch {
-      display: flex; align-items: center; justify-content: center; gap: 6px;
-      width: 100%; padding: 8px 12px;
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      width: auto; max-width: 50%; padding: 7px 14px;
       background: #0a66c2; color: #fff; border: none; border-radius: 0.75rem;
       font-family: 'Open Sans', sans-serif; font-size: 11px; font-weight: 700;
       text-transform: uppercase; letter-spacing: 0.08em;
@@ -459,6 +459,22 @@
       }
     }
 
+    // ── Parse relative date string into sort score ───────────────
+    // Lower score = more recent. "1h" < "2d" < "1w" < "3mo" etc.
+    function dateToScore(dateStr) {
+      if (!dateStr) return Infinity;
+      const s = dateStr.trim().toLowerCase();
+      const n = parseFloat(s);
+      if (isNaN(n)) return Infinity;
+      if (s.includes('mo')) return n * 30 * 24 * 60;
+      if (s.includes('yr') || s.includes('y')) return n * 365 * 24 * 60;
+      if (s.includes('w'))  return n * 7  * 24 * 60;
+      if (s.includes('d'))  return n * 24 * 60;
+      if (s.includes('h'))  return n * 60;
+      if (s.includes('s'))  return n / 60;
+      return Infinity;
+    }
+
     // ── Filter + sort ────────────────────────────────────────────
     function filteredPosts() {
       let posts = allPosts.filter(p => {
@@ -472,10 +488,11 @@
         return matchTag && matchQ;
       });
 
-      posts.sort((a, b) => sortOrder === 'newest'
-        ? (b.savedAt||0) - (a.savedAt||0)
-        : (a.savedAt||0) - (b.savedAt||0)
-      );
+      posts.sort((a, b) => {
+        const aScore = dateToScore(a.date);
+        const bScore = dateToScore(b.date);
+        return sortOrder === 'newest' ? aScore - bScore : bScore - aScore;
+      });
       return posts;
     }
 
