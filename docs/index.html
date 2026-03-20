@@ -493,19 +493,19 @@
     }
 
     // ── Parse relative date string into sort score ───────────────
-    // Lower score = more recent. "1h" < "2d" < "1w" < "3mo" etc.
+    // Lower score = more recent. "1h"=60, "1d"=1440, "1w"=10080 etc.
+    // Returns null for unparseable dates so we can sort them to the end.
     function dateToScore(dateStr) {
-      if (!dateStr) return Infinity;
+      if (!dateStr) return null;
       const s = dateStr.trim().toLowerCase();
       const n = parseFloat(s);
-      if (isNaN(n)) return Infinity;
-      if (s.includes('mo')) return n * 30 * 24 * 60;
-      if (s.includes('yr') || s.includes('y')) return n * 365 * 24 * 60;
-      if (s.includes('w'))  return n * 7  * 24 * 60;
-      if (s.includes('d'))  return n * 24 * 60;
-      if (s.includes('h'))  return n * 60;
-      if (s.includes('s'))  return n / 60;
-      return Infinity;
+      if (isNaN(n) || n <= 0) return null;
+      if (s.endsWith('mo')) return n * 30   * 24 * 60;
+      if (s.endsWith('yr')) return n * 365  * 24 * 60;
+      if (s.endsWith('w'))  return n * 7    * 24 * 60;
+      if (s.endsWith('d'))  return n * 24   * 60;
+      if (s.endsWith('h'))  return n        * 60;
+      return null;
     }
 
     // ── Filter + sort ────────────────────────────────────────────
@@ -524,6 +524,10 @@
       posts.sort((a, b) => {
         const aScore = dateToScore(a.date);
         const bScore = dateToScore(b.date);
+        // Posts with no parseable date always go to the end
+        if (aScore === null && bScore === null) return 0;
+        if (aScore === null) return 1;
+        if (bScore === null) return -1;
         return sortOrder === 'newest' ? aScore - bScore : bScore - aScore;
       });
       return posts;
