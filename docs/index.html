@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LinkedIn Saves</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* ── Reset & base ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d0d0d;
+      --surface:   #161616;
+      --border:    #222;
+      --text:      #e8e4dc;
+      --muted:     #555;
+      --accent:    #c9f264;   /* sharp lime — the one thing you'll remember */
+      --accent-dk: #9bbe3f;
+      --tag-bg:    rgba(201,242,100,0.08);
+      --tag-border:rgba(201,242,100,0.25);
+      --red:       #f87171;
+    }
+
+    html { font-size: 15px; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Header ───────────────────────────────────────────────── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(13,13,13,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .wordmark {
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+
+    .search-wrap {
+      flex: 1;
+      min-width: 180px;
+      position: relative;
+    }
+    .search-wrap svg {
+      position: absolute;
+      left: 11px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      pointer-events: none;
+    }
+    #searchInput {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      padding: 8px 12px 8px 34px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    #searchInput:focus { border-color: var(--accent); }
+    #searchInput::placeholder { color: var(--muted); }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .count-badge {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* import button */
+    .btn-import {
+      background: var(--accent);
+      color: #0d0d0d;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-import:hover { background: var(--accent-dk); }
+    #fileInput { display: none; }
+
+    /* ── Tag filter bar ───────────────────────────────────────── */
+    #tagBar {
+      padding: 10px 24px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      border-bottom: 1px solid var(--border);
+    }
+    #tagBar:empty { display: none; }
+
+    .tag-pill {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.15s;
+      background: transparent;
+      white-space: nowrap;
+    }
+    .tag-pill:hover { border-color: var(--accent); color: var(--accent); }
+    .tag-pill.active {
+      background: var(--tag-bg);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .tag-pill.all { color: var(--text); border-color: #333; }
+    .tag-pill.all.active { color: var(--accent); border-color: var(--accent); background: var(--tag-bg); }
+
+    /* ── Masonry grid ─────────────────────────────────────────── */
+    #grid {
+      padding: 24px;
+      columns: 3 320px;
+      column-gap: 16px;
+    }
+
+    /* ── Cards ────────────────────────────────────────────────── */
+    .card {
+      break-inside: avoid;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 16px;
+      transition: border-color 0.2s, transform 0.2s;
+      display: block; /* show by default */
+    }
+    .card:hover {
+      border-color: #333;
+      transform: translateY(-2px);
+    }
+    .card.hidden { display: none; }
+
+    /* media */
+    .card-media {
+      width: 100%;
+      aspect-ratio: 16/9;
+      object-fit: cover;
+      display: block;
+      background: #1a1a1a;
+    }
+    .card-media-placeholder {
+      width: 100%;
+      height: 6px;
+      background: linear-gradient(90deg, var(--border), transparent);
+    }
+    .video-badge {
+      position: relative;
+    }
+    .video-badge::after {
+      content: '▶';
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(0,0,0,0.6);
+      color: #fff;
+      font-size: 10px;
+      padding: 3px 7px;
+      border-radius: 4px;
+      pointer-events: none;
+    }
+
+    /* body */
+    .card-body { padding: 14px 14px 10px; }
+
+    .card-author {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin-bottom: 10px;
+    }
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: #222;
+      flex-shrink: 0;
+    }
+    .avatar-placeholder {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #222;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .author-info { overflow: hidden; }
+    .author-name {
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text);
+    }
+    .author-headline {
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .card-text {
+      font-size: 13px;
+      line-height: 1.55;
+      color: #bbb;
+      display: -webkit-box;
+      -webkit-line-clamp: 5;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+
+    /* footer */
+    .card-footer {
+      padding: 8px 14px 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .card-date {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      color: var(--muted);
+      margin-right: auto;
+    }
+
+    /* tags on card */
+    .card-tag {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      background: var(--tag-bg);
+      border: 1px solid var(--tag-border);
+      color: var(--accent);
+      cursor: pointer;
+    }
+    .card-tag:hover { background: rgba(201,242,100,0.15); }
+
+    /* tag add input */
+    .tag-add-wrap {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .tag-input {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      padding: 2px 8px;
+      width: 80px;
+      outline: none;
+      transition: border-color 0.15s, width 0.2s;
+    }
+    .tag-input:focus { border-color: var(--accent); width: 110px; }
+    .tag-input::placeholder { color: #444; }
+
+    /* open link btn */
+    .btn-link {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      font-size: 11px;
+      padding: 3px 8px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .btn-link:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Empty / drop states ──────────────────────────────────── */
+    #emptyState {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 80px 24px;
+      gap: 16px;
+    }
+    #emptyState.show { display: flex; }
+    .empty-icon { font-size: 48px; opacity: 0.2; }
+    .empty-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .empty-sub {
+      font-size: 13px;
+      color: var(--muted);
+      max-width: 340px;
+      line-height: 1.6;
+    }
+    .empty-steps {
+      text-align: left;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 20px;
+      font-size: 12px;
+      color: #666;
+      line-height: 2;
+      max-width: 360px;
+    }
+    .empty-steps span { color: var(--accent); font-family: 'DM Mono', monospace; }
+
+    /* drag-over highlight */
+    body.drag-over #emptyState,
+    body.drag-over #grid { outline: 2px dashed var(--accent); outline-offset: -4px; border-radius: 12px; }
+
+    /* ── Toast ────────────────────────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 12px;
+      padding: 10px 18px;
+      border-radius: 8px;
+      opacity: 0;
+      transition: all 0.25s;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 999;
+    }
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Header ──────────────────────────────────────────────── -->
+  <header>
+    <div class="wordmark">// saves</div>
+    <div class="search-wrap">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input id="searchInput" type="text" placeholder="Search posts, authors, tags…">
+    </div>
+    <div class="header-right">
+      <span class="count-badge" id="countBadge">0 posts</span>
+      <button class="btn-import" id="importBtn">Import JSON</button>
+      <input type="file" id="fileInput" accept=".json">
+    </div>
+  </header>
+
+  <!-- ── Tag filter bar ──────────────────────────────────────── -->
+  <div id="tagBar"></div>
+
+  <!-- ── Grid ────────────────────────────────────────────────── -->
+  <div id="grid"></div>
+
+  <!-- ── Empty state ─────────────────────────────────────────── -->
+  <div id="emptyState">
+    <div class="empty-icon">⬡</div>
+    <div class="empty-title">No saves yet</div>
+    <div class="empty-sub">Install the Chrome extension, browse your LinkedIn Saved Posts, then export and import the JSON here.</div>
+    <div class="empty-steps">
+      <span>01</span> Install the Chrome extension<br>
+      <span>02</span> Go to linkedin.com/my-items/saved-posts<br>
+      <span>03</span> Scroll through all your saves<br>
+      <span>04</span> Click Export JSON in the extension popup<br>
+      <span>05</span> Drop the file here or click Import JSON
+    </div>
+  </div>
+
+  <!-- ── Toast ───────────────────────────────────────────────── -->
+  <div id="toast"></div>
+
+  <script>
+    // ── State ──────────────────────────────────────────────────
+    let allPosts   = [];
+    let activeTag  = 'all';
+    let searchQ    = '';
+
+    const grid       = document.getElementById('grid');
+    const emptyState = document.getElementById('emptyState');
+    const tagBar     = document.getElementById('tagBar');
+    const countBadge = document.getElementById('countBadge');
+    const searchInput= document.getElementById('searchInput');
+    const importBtn  = document.getElementById('importBtn');
+    const fileInput  = document.getElementById('fileInput');
+    const toastEl    = document.getElementById('toast');
+
+    // ── Toast ──────────────────────────────────────────────────
+    function toast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add('show');
+      setTimeout(() => toastEl.classList.remove('show'), 2400);
+    }
+
+    // ── Persist to localStorage ────────────────────────────────
+    const LS_KEY = 'linkedin_saves_viewer';
+
+    function savePosts() {
+      localStorage.setItem(LS_KEY, JSON.stringify(allPosts));
+    }
+
+    function loadFromStorage() {
+      try {
+        const raw = localStorage.getItem(LS_KEY);
+        if (raw) allPosts = JSON.parse(raw);
+      } catch(e) {}
+    }
+
+    // ── Clean a post on import (fix known scraper quirks) ─────
+    const JUNK_AUTHOR = /^Status is (online|offline|reachable|away)$/i;
+    const JUNK_TEXT   = /^\d+(h|d|w|mo|yr|s)\s*[•·]?\s*\n?\s*\d*(h|d|w|mo|yr|s)?\s*(Visible to everyone)?$/i;
+
+    function cleanPost(p) {
+      let { author, authorHeadline, text } = p;
+
+      // Fix swapped author/headline: if author is blank or junk but headline looks like a name
+      if ((!author || JUNK_AUTHOR.test(author)) && authorHeadline) {
+        author = authorHeadline;
+        authorHeadline = '';
+      }
+      // Strip junk from author field
+      if (JUNK_AUTHOR.test(author)) author = '';
+
+      // Strip junk post text (just a date echo)
+      if (text && JUNK_TEXT.test(text.trim())) text = '';
+
+      // Clean up "…see more" suffix
+      text = text?.replace(/\s*…see more\s*$/i, '').trim() || '';
+
+      return { ...p, author, authorHeadline, text };
+    }
+
+    // ── Merge incoming JSON ────────────────────────────────────
+    function mergePosts(incoming) {
+      const map = {};
+      allPosts.forEach(p => { map[p.id] = p; });
+      let added = 0;
+      incoming.forEach(raw => {
+        const p = cleanPost(raw);
+        if (!map[p.id]) { map[p.id] = p; added++; }
+        else { map[p.id] = { ...p, tags: map[p.id].tags }; }
+      });
+      allPosts = Object.values(map).sort((a,b) => (b.savedAt||0) - (a.savedAt||0));
+      savePosts();
+      return added;
+    }
+
+    // ── Get all unique tags ────────────────────────────────────
+    function getAllTags() {
+      const set = new Set();
+      allPosts.forEach(p => (p.tags||[]).forEach(t => set.add(t)));
+      return [...set].sort();
+    }
+
+    // ── Render tag bar ─────────────────────────────────────────
+    function renderTagBar() {
+      const tags = getAllTags();
+      tagBar.innerHTML = '';
+      if (tags.length === 0) return;
+
+      const allPill = document.createElement('button');
+      allPill.className = 'tag-pill all' + (activeTag === 'all' ? ' active' : '');
+      allPill.textContent = 'All';
+      allPill.onclick = () => { activeTag = 'all'; renderAll(); };
+      tagBar.appendChild(allPill);
+
+      tags.forEach(tag => {
+        const pill = document.createElement('button');
+        pill.className = 'tag-pill' + (activeTag === tag ? ' active' : '');
+        pill.textContent = tag;
+        pill.onclick = () => { activeTag = tag; renderAll(); };
+        tagBar.appendChild(pill);
+      });
+    }
+
+    // ── Filter posts ───────────────────────────────────────────
+    function filteredPosts() {
+      return allPosts.filter(p => {
+        const matchTag = activeTag === 'all' || (p.tags||[]).includes(activeTag);
+        const q = searchQ.toLowerCase();
+        const matchSearch = !q ||
+          p.text?.toLowerCase().includes(q) ||
+          p.author?.toLowerCase().includes(q) ||
+          p.authorHeadline?.toLowerCase().includes(q) ||
+          (p.tags||[]).some(t => t.toLowerCase().includes(q));
+        return matchTag && matchSearch;
+      });
+    }
+
+    // ── Add / remove tag on a post ─────────────────────────────
+    function addTag(postId, tag) {
+      tag = tag.trim().toLowerCase().replace(/\s+/g, '-');
+      if (!tag) return;
+      const post = allPosts.find(p => p.id === postId);
+      if (!post) return;
+      if (!(post.tags||[]).includes(tag)) {
+        post.tags = [...(post.tags||[]), tag];
+        savePosts();
+        renderAll();
+        toast(`Tagged "${tag}"`);
+      }
+    }
+
+    function removeTag(postId, tag) {
+      const post = allPosts.find(p => p.id === postId);
+      if (!post) return;
+      post.tags = (post.tags||[]).filter(t => t !== tag);
+      savePosts();
+      renderAll();
+    }
+
+    // ── Build a single card ────────────────────────────────────
+    function buildCard(post) {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.dataset.id = post.id;
+
+      // media
+      if (post.mediaUrl) {
+        const wrap = document.createElement('div');
+        if (post.mediaType === 'video') wrap.className = 'video-badge';
+        const img = document.createElement('img');
+        img.className = 'card-media';
+        img.src = post.mediaUrl;
+        img.alt = '';
+        img.loading = 'lazy';
+        img.onerror = () => { wrap.style.display = 'none'; };
+        wrap.appendChild(img);
+        card.appendChild(wrap);
+      } else {
+        const bar = document.createElement('div');
+        bar.className = 'card-media-placeholder';
+        card.appendChild(bar);
+      }
+
+      // body
+      const body = document.createElement('div');
+      body.className = 'card-body';
+
+      // author
+      const authorRow = document.createElement('div');
+      authorRow.className = 'card-author';
+      if (post.authorAvatar) {
+        const av = document.createElement('img');
+        av.className = 'avatar';
+        av.src = post.authorAvatar;
+        av.alt = '';
+        av.onerror = () => { av.style.display='none'; };
+        authorRow.appendChild(av);
+      } else {
+        const av = document.createElement('div');
+        av.className = 'avatar-placeholder';
+        av.textContent = (post.author||'?')[0].toUpperCase();
+        authorRow.appendChild(av);
+      }
+      const info = document.createElement('div');
+      info.className = 'author-info';
+      info.innerHTML = `
+        <div class="author-name">${esc(post.author||'Unknown')}</div>
+        <div class="author-headline">${esc(post.authorHeadline||'')}</div>
+      `;
+      authorRow.appendChild(info);
+      body.appendChild(authorRow);
+
+      // text
+      if (post.text) {
+        const txt = document.createElement('div');
+        txt.className = 'card-text';
+        txt.textContent = post.text;
+        body.appendChild(txt);
+      }
+
+      card.appendChild(body);
+
+      // footer
+      const footer = document.createElement('div');
+      footer.className = 'card-footer';
+
+      const date = document.createElement('span');
+      date.className = 'card-date';
+      date.textContent = post.date || '';
+      footer.appendChild(date);
+
+      // existing tags
+      (post.tags||[]).forEach(tag => {
+        const t = document.createElement('span');
+        t.className = 'card-tag';
+        t.textContent = tag;
+        t.title = 'Click to remove';
+        t.onclick = () => removeTag(post.id, tag);
+        footer.appendChild(t);
+      });
+
+      // tag input
+      const tagInput = document.createElement('input');
+      tagInput.className = 'tag-input';
+      tagInput.placeholder = '+ tag';
+      tagInput.maxLength = 24;
+      tagInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          addTag(post.id, tagInput.value);
+          tagInput.value = '';
+        }
+      });
+      footer.appendChild(tagInput);
+
+      // open link
+      if (post.postUrl) {
+        const link = document.createElement('a');
+        link.className = 'btn-link';
+        link.href = post.postUrl;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.innerHTML = `<svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> Open`;
+        footer.appendChild(link);
+      }
+
+      card.appendChild(footer);
+      return card;
+    }
+
+    // ── Render everything ──────────────────────────────────────
+    function renderAll() {
+      grid.innerHTML = '';
+      renderTagBar();
+
+      const posts = filteredPosts();
+      countBadge.textContent = `${posts.length} post${posts.length !== 1 ? 's' : ''}`;
+
+      if (allPosts.length === 0) {
+        emptyState.classList.add('show');
+        return;
+      }
+      emptyState.classList.remove('show');
+
+      posts.forEach(p => grid.appendChild(buildCard(p)));
+    }
+
+    // ── Escape HTML ────────────────────────────────────────────
+    function esc(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ── Import JSON ────────────────────────────────────────────
+    function handleImport(file) {
+      if (!file || !file.name.endsWith('.json')) { toast('Please drop a .json file'); return; }
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (!Array.isArray(data)) throw new Error('Expected array');
+          const added = mergePosts(data);
+          renderAll();
+          toast(`Imported ${added} new posts (${allPosts.length} total)`);
+        } catch(err) {
+          toast('Invalid JSON file');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    importBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', e => {
+      handleImport(e.target.files[0]);
+      fileInput.value = '';
+    });
+
+    // ── Drag & drop ────────────────────────────────────────────
+    document.addEventListener('dragover', e => { e.preventDefault(); document.body.classList.add('drag-over'); });
+    document.addEventListener('dragleave', e => { if (!e.relatedTarget) document.body.classList.remove('drag-over'); });
+    document.addEventListener('drop', e => {
+      e.preventDefault();
+      document.body.classList.remove('drag-over');
+      handleImport(e.dataTransfer.files[0]);
+    });
+
+    // ── Search ─────────────────────────────────────────────────
+    let searchTimer;
+    searchInput.addEventListener('input', () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => { searchQ = searchInput.value; renderAll(); }, 200);
+    });
+
+    // ── Init ───────────────────────────────────────────────────
+    loadFromStorage();
+    renderAll();
+  </script>
+</body>
+</html>
