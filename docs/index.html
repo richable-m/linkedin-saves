@@ -68,6 +68,85 @@
     }
     .btn-import:hover { opacity: 0.85; }
     #fileInput { display: none; }
+    .btn-secondary {
+      background: transparent; color: var(--muted2);
+      border: 1px solid var(--border2); border-radius: 0.75rem;
+      padding: 7px 12px; font-family: 'Open Sans', sans-serif;
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; cursor: pointer;
+      display: inline-flex; align-items: center; gap: 5px;
+      transition: all 0.15s;
+    }
+    .btn-secondary:hover { border-color: var(--yellow); color: var(--yellow); }
+    .btn-secondary.active { border-color: var(--yellow); color: var(--yellow); background: rgba(255,241,206,0.06); }
+
+    /* ── Bulk action bar ─────────────────────────────────────── */
+    #bulkBar {
+      display: none; padding: 8px 80px;
+      background: rgba(255,241,206,0.05);
+      border-bottom: 1px solid rgba(255,241,206,0.15);
+      align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    #bulkBar.show { display: flex; }
+    .bulk-count {
+      font-family: 'Syne Mono', monospace; font-size: 11px;
+      color: var(--yellow); letter-spacing: 0.08em;
+      text-transform: uppercase; margin-right: 4px;
+    }
+    .bulk-action-btn {
+      font-family: 'Syne Mono', monospace; font-size: 10px;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      padding: 4px 12px; border-radius: 20px; cursor: pointer;
+      transition: all 0.15s; background: transparent;
+    }
+    .bulk-action-btn.tag   { border: 1px solid rgba(255,241,206,0.2); color: var(--yellow); }
+    .bulk-action-btn.hide  { border: 1px solid var(--border2); color: var(--muted2); }
+    .bulk-action-btn.del   { border: 1px solid rgba(255,137,129,0.2); color: var(--red); }
+    .bulk-action-btn:hover { opacity: 0.75; }
+    .bulk-select-all {
+      font-family: 'Syne Mono', monospace; font-size: 10px;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--muted); cursor: pointer; background: none;
+      border: none; margin-left: auto; transition: color 0.15s;
+    }
+    .bulk-select-all:hover { color: var(--text); }
+
+    /* ── Card checkbox overlay ───────────────────────────────── */
+    .card-checkbox-wrap {
+      display: none; position: absolute; top: 10px; left: 10px; z-index: 20;
+    }
+    body.bulk-mode .card-checkbox-wrap { display: block; }
+    body.bulk-mode .card-actions { display: none; }
+    .card-checkbox {
+      width: 20px; height: 20px; border-radius: 6px;
+      background: rgba(10,10,10,0.8); border: 2px solid rgba(255,255,255,0.3);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s; backdrop-filter: blur(4px);
+    }
+    .card-checkbox.checked { background: var(--yellow); border-color: var(--yellow); }
+    .card-checkbox.checked::after { content: ''; width: 5px; height: 9px; border: 2px solid #0a0a0a; border-top: none; border-left: none; transform: rotate(45deg) translateY(-1px); display: block; }
+    body.bulk-mode .card { cursor: pointer; }
+
+    /* ── Notes field ─────────────────────────────────────────── */
+    .card-notes-wrap { padding: 0 16px 12px; }
+    .notes-toggle {
+      background: none; border: none; padding: 0;
+      font-family: 'Syne Mono', monospace; font-size: 10px;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--muted); cursor: pointer; transition: color 0.15s;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .notes-toggle:hover { color: var(--yellow); }
+    .notes-textarea {
+      width: 100%; margin-top: 8px;
+      background: rgba(0,0,0,0.3); border: 1px solid var(--border2);
+      border-radius: 0.75rem; color: var(--text);
+      font-family: 'Open Sans', sans-serif; font-size: 12px;
+      line-height: 1.5; padding: 8px 12px; outline: none; resize: none;
+      transition: border-color 0.2s; min-height: 70px;
+    }
+    .notes-textarea:focus { border-color: rgba(255,241,206,0.3); }
+    .notes-textarea::placeholder { color: #3a3a3a; }
 
     /* ── Filter bar ──────────────────────────────────────────── */
     #filterBar {
@@ -359,12 +438,27 @@
     </div>
     <div class="header-right">
       <span class="count-badge" id="countBadge">0 Posts</span>
+      <button class="btn-secondary" id="bulkToggleBtn" title="Select multiple posts">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Select
+      </button>
+      <button class="btn-secondary" id="exportCsvBtn" title="Export as CSV">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        CSV
+      </button>
       <button class="btn-import" id="importBtn">Import JSON</button>
       <input type="file" id="fileInput" accept=".json">
     </div>
   </header>
 
   <div id="filterBar"></div>
+  <div id="bulkBar">
+    <span class="bulk-count" id="bulkCount">0 Selected</span>
+    <button class="bulk-action-btn tag" id="bulkTagBtn">+ Tag</button>
+    <button class="bulk-action-btn hide" id="bulkHideBtn">Hide</button>
+    <button class="bulk-action-btn del" id="bulkDeleteBtn">Delete</button>
+    <button class="bulk-select-all" id="bulkSelectAll">Select All</button>
+  </div>
   <div id="grid"></div>
 
   <div id="emptyState">
@@ -392,15 +486,20 @@
     let sortOrder  = 'newest';
     let searchQ    = '';
     let showHidden = false;
+    let bulkMode   = false;
+    let selected   = new Set();
 
-    const grid        = document.getElementById('grid');
-    const emptyState  = document.getElementById('emptyState');
-    const filterBar   = document.getElementById('filterBar');
-    const countBadge  = document.getElementById('countBadge');
-    const searchInput = document.getElementById('searchInput');
-    const importBtn   = document.getElementById('importBtn');
-    const fileInput   = document.getElementById('fileInput');
-    const toastEl     = document.getElementById('toast');
+    const grid          = document.getElementById('grid');
+    const emptyState    = document.getElementById('emptyState');
+    const filterBar     = document.getElementById('filterBar');
+    const bulkBar       = document.getElementById('bulkBar');
+    const countBadge    = document.getElementById('countBadge');
+    const searchInput   = document.getElementById('searchInput');
+    const importBtn     = document.getElementById('importBtn');
+    const fileInput     = document.getElementById('fileInput');
+    const toastEl       = document.getElementById('toast');
+    const bulkToggleBtn = document.getElementById('bulkToggleBtn');
+    const exportCsvBtn  = document.getElementById('exportCsvBtn');
 
     // ── Toast ───────────────────────────────────────────────────
     function toast(msg) {
@@ -481,6 +580,101 @@
       allPosts = allPosts.filter(p => p.id !== postId);
       savePosts(); renderAll();
       toast('Post deleted');
+    }
+
+    // ── Notes ────────────────────────────────────────────────────
+    function saveNote(postId, note) {
+      const post = allPosts.find(p => p.id === postId);
+      if (!post) return;
+      post.note = note;
+      savePosts();
+    }
+
+    // ── CSV Export ───────────────────────────────────────────────
+    function exportCsv() {
+      if (allPosts.length === 0) { toast('No posts to export'); return; }
+      const cols = ['author', 'authorHeadline', 'date', 'text', 'note', 'tags', 'postUrl', 'isRepost', 'repostedFrom'];
+      const escape = v => '"' + String(v||'').replace(/"/g, '""') + '"';
+      const rows = [cols.join(',')];
+      allPosts.forEach(p => {
+        rows.push([
+          escape(p.author),
+          escape(p.authorHeadline),
+          escape(p.date),
+          escape(p.text),
+          escape(p.note || ''),
+          escape((p.tags||[]).join(', ')),
+          escape(p.postUrl),
+          escape(p.isRepost ? 'yes' : 'no'),
+          escape(p.repostedFrom || ''),
+        ].join(','));
+      });
+      const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href = url;
+      a.download = `rad-linkedin-saves-${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast(`Exported ${allPosts.length} posts to CSV`);
+    }
+
+    // ── Bulk actions ─────────────────────────────────────────────
+    function toggleBulkMode() {
+      bulkMode = !bulkMode;
+      selected.clear();
+      document.body.classList.toggle('bulk-mode', bulkMode);
+      bulkToggleBtn.classList.toggle('active', bulkMode);
+      bulkBar.classList.toggle('show', bulkMode);
+      updateBulkBar();
+      renderAll();
+    }
+
+    function toggleSelect(postId) {
+      if (selected.has(postId)) selected.delete(postId);
+      else selected.add(postId);
+      updateBulkBar();
+      // Update just this card's checkbox
+      const card = grid.querySelector(`[data-id="${postId}"]`);
+      if (card) {
+        const cb = card.querySelector('.card-checkbox');
+        if (cb) cb.classList.toggle('checked', selected.has(postId));
+      }
+    }
+
+    function updateBulkBar() {
+      const n = selected.size;
+      document.getElementById('bulkCount').textContent = `${n} Selected`;
+      document.getElementById('bulkTagBtn').disabled   = n === 0;
+      document.getElementById('bulkHideBtn').disabled  = n === 0;
+      document.getElementById('bulkDeleteBtn').disabled= n === 0;
+    }
+
+    function bulkTag() {
+      const tag = prompt('Tag to apply to selected posts:');
+      if (!tag?.trim()) return;
+      selected.forEach(id => addTag(id, tag));
+      toast(`Tagged ${selected.size} posts`);
+    }
+
+    function bulkHide() {
+      selected.forEach(id => {
+        const post = allPosts.find(p => p.id === id);
+        if (post) post.hidden = true;
+      });
+      savePosts();
+      toast(`Hidden ${selected.size} posts`);
+      selected.clear();
+      renderAll();
+    }
+
+    function bulkDelete() {
+      if (!confirm(`Delete ${selected.size} posts? This cannot be undone.`)) return;
+      allPosts = allPosts.filter(p => !selected.has(p.id));
+      savePosts();
+      toast(`Deleted ${selected.size} posts`);
+      selected.clear();
+      renderAll();
     }
 
     // ── Filter bar ──────────────────────────────────────────────
@@ -770,6 +964,34 @@
       }
       card.appendChild(body);
 
+      // ── Notes field ────────────────────────────────────────────
+      const notesWrap = document.createElement('div');
+      notesWrap.className = 'card-notes-wrap';
+
+      const notesToggle = document.createElement('button');
+      notesToggle.className = 'notes-toggle';
+      const hasNote = !!post.note;
+      notesToggle.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> ${hasNote ? 'Edit note' : 'Add note'}`;
+      notesWrap.appendChild(notesToggle);
+
+      let notesOpen = hasNote;
+      const textarea = document.createElement('textarea');
+      textarea.className = 'notes-textarea';
+      textarea.placeholder = 'Why did you save this? Add context, ideas, or reminders…';
+      textarea.value = post.note || '';
+      textarea.style.display = notesOpen ? 'block' : 'none';
+      textarea.addEventListener('click', e => e.stopPropagation());
+      textarea.addEventListener('input', () => saveNote(post.id, textarea.value));
+      notesWrap.appendChild(textarea);
+
+      notesToggle.addEventListener('click', e => {
+        e.stopPropagation();
+        notesOpen = !notesOpen;
+        textarea.style.display = notesOpen ? 'block' : 'none';
+        if (notesOpen) textarea.focus();
+      });
+      card.appendChild(notesWrap);
+
       // Footer — tags
       const footer = document.createElement('div');
       footer.className = 'card-footer';
@@ -787,6 +1009,19 @@
       });
       footer.appendChild(tagInput);
       card.appendChild(footer);
+
+      // ── Checkbox (bulk mode) ────────────────────────────────────
+      const cbWrap = document.createElement('div');
+      cbWrap.className = 'card-checkbox-wrap';
+      const cb = document.createElement('div');
+      cb.className = 'card-checkbox' + (selected.has(post.id) ? ' checked' : '');
+      cbWrap.appendChild(cb);
+      card.appendChild(cbWrap);
+
+      // Card click — in bulk mode toggles selection, otherwise nothing
+      card.addEventListener('click', () => {
+        if (bulkMode) toggleSelect(post.id);
+      });
 
       return card;
     }
@@ -834,6 +1069,22 @@
     document.addEventListener('dragover', e => { e.preventDefault(); document.body.classList.add('drag-over'); });
     document.addEventListener('dragleave', e => { if (!e.relatedTarget) document.body.classList.remove('drag-over'); });
     document.addEventListener('drop', e => { e.preventDefault(); document.body.classList.remove('drag-over'); handleImport(e.dataTransfer.files[0]); });
+
+    exportCsvBtn.addEventListener('click', exportCsv);
+    bulkToggleBtn.addEventListener('click', toggleBulkMode);
+    document.getElementById('bulkTagBtn').addEventListener('click', bulkTag);
+    document.getElementById('bulkHideBtn').addEventListener('click', bulkHide);
+    document.getElementById('bulkDeleteBtn').addEventListener('click', bulkDelete);
+    document.getElementById('bulkSelectAll').addEventListener('click', () => {
+      const visible = filteredPosts().map(p => p.id);
+      if (selected.size === visible.length) {
+        selected.clear();
+      } else {
+        visible.forEach(id => selected.add(id));
+      }
+      updateBulkBar();
+      renderAll();
+    });
 
     let searchTimer;
     searchInput.addEventListener('input', () => {
