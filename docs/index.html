@@ -720,23 +720,31 @@
         filterBar.appendChild(hiddenBtn);
       }
 
-      // Only show tag filters if there are tags
+      // Tag filters — always show divider + Untagged if posts exist
+      const div = document.createElement('div');
+      div.className = 'filter-divider';
+      filterBar.appendChild(div);
+
+      const tagLabel = document.createElement('span');
+      tagLabel.className = 'filter-label';
+      tagLabel.textContent = 'Tags:';
+      filterBar.appendChild(tagLabel);
+
+      const allPill = document.createElement('button');
+      allPill.className = 'tag-pill' + (activeTag === 'all' ? ' active' : '');
+      allPill.textContent = 'All';
+      allPill.onclick = () => { activeTag = 'all'; renderAll(); };
+      filterBar.appendChild(allPill);
+
+      // Untagged pill — always shown so you can find posts that need tagging
+      const untaggedCount = allPosts.filter(p => !p.hidden && (!p.tags || p.tags.length === 0)).length;
+      const untaggedPill = document.createElement('button');
+      untaggedPill.className = 'tag-pill' + (activeTag === '__untagged__' ? ' active' : '');
+      untaggedPill.textContent = `Untagged (${untaggedCount})`;
+      untaggedPill.onclick = () => { activeTag = '__untagged__'; renderAll(); };
+      filterBar.appendChild(untaggedPill);
+
       if (tags.length > 0) {
-        const div = document.createElement('div');
-        div.className = 'filter-divider';
-        filterBar.appendChild(div);
-
-        const tagLabel = document.createElement('span');
-        tagLabel.className = 'filter-label';
-        tagLabel.textContent = 'Tags:';
-        filterBar.appendChild(tagLabel);
-
-        const allPill = document.createElement('button');
-        allPill.className = 'tag-pill' + (activeTag === 'all' ? ' active' : '');
-        allPill.textContent = 'All';
-        allPill.onclick = () => { activeTag = 'all'; renderAll(); };
-        filterBar.appendChild(allPill);
-
         tags.forEach(t => {
           const pill = document.createElement('button');
           pill.className = 'tag-pill' + (activeTag === t ? ' active' : '');
@@ -771,7 +779,11 @@
     function filteredPosts() {
       let posts = allPosts.filter(p => {
         if (p.hidden && !showHidden) return false;
-        const matchTag = activeTag === 'all' || (p.tags||[]).includes(activeTag);
+        const matchTag = activeTag === 'all'
+          ? true
+          : activeTag === '__untagged__'
+          ? (!p.tags || p.tags.length === 0)
+          : (p.tags||[]).includes(activeTag);
         const q = searchQ.toLowerCase();
         const matchQ = !q ||
           p.text?.toLowerCase().includes(q) ||
