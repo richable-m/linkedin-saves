@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LinkedIn Saves</title>
+  <title>Rad LinkedIn Saver</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&family=Syne+Mono&display=swap" rel="stylesheet">
   <style>
@@ -259,6 +259,28 @@
     }
     .btn-watch:hover { opacity: 0.88; }
 
+    /* ── Card action buttons (hide + delete) ────────────────── */
+    .card-actions {
+      position: absolute; top: 10px; right: 10px; z-index: 10;
+      display: flex; gap: 6px;
+      opacity: 0; transition: opacity 0.15s;
+    }
+    .card:hover .card-actions { opacity: 1; }
+    .card-action-btn {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: rgba(10,10,10,0.75); border: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.5); cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s; backdrop-filter: blur(4px);
+      flex-shrink: 0;
+    }
+    .card-action-btn:hover { background: rgba(10,10,10,0.95); border-color: rgba(255,255,255,0.25); color: #fff; }
+    .card-action-btn.hide-btn:hover { color: var(--yellow); border-color: rgba(255,241,206,0.4); }
+    .card-action-btn.delete-btn:hover { color: var(--red); border-color: rgba(255,137,129,0.4); }
+    /* Hidden cards show faded with restore button */
+    .card.is-hidden { opacity: 0.35; }
+    .card.is-hidden .card-action-btn.hide-btn { color: var(--yellow); opacity: 1; }
+
     /* ── Card footer — tags ──────────────────────────────────── */
     .card-footer { padding: 0 16px 14px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .card-tag {
@@ -328,7 +350,7 @@
 <body>
 
   <header>
-    <div class="wordmark">Saves //</div>
+    <div class="wordmark">Rad LinkedIn Saver</div>
     <div class="search-wrap">
       <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
         <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
@@ -360,11 +382,16 @@
 
   <div id="toast"></div>
 
+  <footer style="text-align:center; padding: 40px 24px 32px; font-family:'Syne Mono',monospace; font-size:10px; text-transform:uppercase; letter-spacing:0.1em; color:#2a2a2a;">
+    Made by <a href="https://radcreative.work" target="_blank" style="color:#3a3a3a; text-decoration:none;" onmouseover="this.style.color='#fff1ce'" onmouseout="this.style.color='#3a3a3a'">radcreative.work</a>
+  </footer>
+
   <script>
-    let allPosts  = [];
-    let activeTag = 'all';
-    let sortOrder = 'newest'; // 'newest' | 'oldest'
-    let searchQ   = '';
+    let allPosts   = [];
+    let activeTag  = 'all';
+    let sortOrder  = 'newest';
+    let searchQ    = '';
+    let showHidden = false;
 
     const grid        = document.getElementById('grid');
     const emptyState  = document.getElementById('emptyState');
@@ -441,9 +468,25 @@
       savePosts(); renderAll();
     }
 
+    // ── Hide / delete ────────────────────────────────────────────
+    function hidePost(postId) {
+      const post = allPosts.find(p => p.id === postId);
+      if (!post) return;
+      post.hidden = !post.hidden;
+      savePosts(); renderAll();
+      toast(post.hidden ? 'Post hidden' : 'Post restored');
+    }
+
+    function deletePost(postId) {
+      allPosts = allPosts.filter(p => p.id !== postId);
+      savePosts(); renderAll();
+      toast('Post deleted');
+    }
+
     // ── Filter bar ──────────────────────────────────────────────
     function renderFilterBar() {
       const tags = getAllTags();
+      const hiddenCount = allPosts.filter(p => p.hidden).length;
       filterBar.innerHTML = '';
       if (allPosts.length === 0) return;
 
@@ -464,6 +507,19 @@
         sortGroup.appendChild(btn);
       });
       filterBar.appendChild(sortGroup);
+
+      // Show hidden toggle — only if there are hidden posts
+      if (hiddenCount > 0) {
+        const div2 = document.createElement('div');
+        div2.className = 'filter-divider';
+        filterBar.appendChild(div2);
+
+        const hiddenBtn = document.createElement('button');
+        hiddenBtn.className = 'sort-btn' + (showHidden ? ' active' : '');
+        hiddenBtn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:middle"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>${hiddenCount} Hidden`;
+        hiddenBtn.onclick = () => { showHidden = !showHidden; renderAll(); };
+        filterBar.appendChild(hiddenBtn);
+      }
 
       // Only show tag filters if there are tags
       if (tags.length > 0) {
@@ -515,6 +571,7 @@
     // ── Filter + sort ────────────────────────────────────────────
     function filteredPosts() {
       let posts = allPosts.filter(p => {
+        if (p.hidden && !showHidden) return false;
         const matchTag = activeTag === 'all' || (p.tags||[]).includes(activeTag);
         const q = searchQ.toLowerCase();
         const matchQ = !q ||
@@ -609,6 +666,35 @@
         thumbWrap.classList.add('text-only');
       }
       card.appendChild(thumbWrap);
+
+      // ── Hide + Delete action buttons (appear on hover) ─────────
+      const actions = document.createElement('div');
+      actions.className = 'card-actions';
+
+      const hideBtn = document.createElement('button');
+      hideBtn.className = 'card-action-btn hide-btn';
+      hideBtn.title = post.hidden ? 'Restore post' : 'Hide post';
+      hideBtn.innerHTML = post.hidden
+        ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`
+        : `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+      hideBtn.addEventListener('click', e => { e.stopPropagation(); hidePost(post.id); });
+      actions.appendChild(hideBtn);
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'card-action-btn delete-btn';
+      delBtn.title = 'Delete post';
+      delBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`;
+      delBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        if (confirm(`Delete this post by ${post.author || 'Unknown'}? This cannot be undone.`)) {
+          deletePost(post.id);
+        }
+      });
+      actions.appendChild(delBtn);
+      card.appendChild(actions);
+
+      // Apply hidden styling
+      if (post.hidden) card.classList.add('is-hidden');
 
       // ── Body ───────────────────────────────────────────────────
       const body = document.createElement('div');
