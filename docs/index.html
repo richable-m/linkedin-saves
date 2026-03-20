@@ -438,6 +438,10 @@
     </div>
     <div class="header-right">
       <span class="count-badge" id="countBadge">0 Posts</span>
+      <button class="btn-secondary" id="clearAllBtn" title="Clear all saves">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        Clear All
+      </button>
       <button class="btn-secondary" id="bulkToggleBtn" title="Select multiple posts">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
         Select
@@ -500,6 +504,7 @@
     const toastEl       = document.getElementById('toast');
     const bulkToggleBtn = document.getElementById('bulkToggleBtn');
     const exportCsvBtn  = document.getElementById('exportCsvBtn');
+    const clearAllBtn   = document.getElementById('clearAllBtn');
 
     // ── Toast ───────────────────────────────────────────────────
     function toast(msg) {
@@ -1071,6 +1076,14 @@
     document.addEventListener('drop', e => { e.preventDefault(); document.body.classList.remove('drag-over'); handleImport(e.dataTransfer.files[0]); });
 
     exportCsvBtn.addEventListener('click', exportCsv);
+    clearAllBtn.addEventListener('click', () => {
+      if (!confirm(`Clear all ${allPosts.length} saved posts? This cannot be undone.`)) return;
+      allPosts = [];
+      selected.clear();
+      savePosts();
+      renderAll();
+      toast('All saves cleared');
+    });
     bulkToggleBtn.addEventListener('click', toggleBulkMode);
     document.getElementById('bulkTagBtn').addEventListener('click', bulkTag);
     document.getElementById('bulkHideBtn').addEventListener('click', bulkHide);
